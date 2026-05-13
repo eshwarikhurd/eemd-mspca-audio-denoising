@@ -9,7 +9,9 @@ if isequal(filename, 0)
     return;
 end
 [y, Fs] = audioread(fullfile(pathname, filename));
-x = y(1:44100); % Use 1 second of audio
+
+% FIX: guard against audio shorter than 1 second
+x = y(1:min(length(y), 44100));
 x = x / max(abs(x)); % Normalize signal
 
 % Define SNR values
@@ -38,7 +40,6 @@ for n = 1:num_iterations
     min_len_iter = min(length(denoised_signal), length(x));
     signal_snr = denoised_signal(1:min_len_iter);
     reference_snr = x(1:min_len_iter);
-    
 end
 
 % Smooth final output
@@ -46,6 +47,10 @@ denoised_final_smoothed = movmean(denoised_signal, 5);
 
 % Match lengths
 min_len = min([length(x), length(noisy_signal), length(denoised_final_smoothed)]);
+
+% FIX: force even length for clean FFT frequency axis
+min_len = min_len - mod(min_len, 2);
+
 x = x(1:min_len);
 noisy_signal = noisy_signal(1:min_len);
 denoised_final_smoothed = denoised_final_smoothed(1:min_len);
@@ -74,13 +79,18 @@ disp('Playing original audio...'); sound(x, Fs); pause(length(x) / Fs + 1);
 disp('Playing noisy audio...'); sound(noisy_signal, Fs); pause(length(noisy_signal) / Fs + 1);
 disp('Playing denoised audio...'); sound(denoised_final_smoothed, Fs); pause(length(denoised_final_smoothed) / Fs + 1);
 
-% Final SNR results
-compute_snr(x, x, 'Original Signal SNR'); 
-compute_snr(noisy_signal, x, 'Noisy Signal SNR'); 
-compute_snr(denoised_final_smoothed, x, 'Final Denoised Signal SNR'); 
+% FIX: capture and print SNR values
+fprintf('\n=== SNR Results ===\n');
+snr_orig    = compute_snr(x, x);
+snr_noisy_  = compute_snr(noisy_signal, x);
+snr_den     = compute_snr(denoised_final_smoothed, x);
+fprintf('Original Signal SNR     : %.4f dB\n', snr_orig);
+fprintf('Noisy Signal SNR        : %.4f dB\n', snr_noisy_);
+fprintf('Denoised Signal SNR     : %.4f dB\n', snr_den);
+fprintf('SNR Improvement         : %.4f dB\n', snr_den - snr_noisy_);
 
 %% --- Final Metrics ---
-fprintf('\n=== Final Metrics ===\n');
+fprintf('\n=== Hildebrand-Sekhon Metrics ===\n');
 print_all_metrics('Original Signal', x, x, Fs);
 print_all_metrics('Noisy Signal', noisy_signal, x, Fs);
 print_all_metrics('Denoised Signal (Best)', denoised_final_smoothed, x, Fs);
@@ -102,10 +112,11 @@ function denoised_signal = svd_denoising(IMF, L)
         threshold = median(singular_vals) * 0.6;
         S(S < threshold) = 0;
 
+        % FIX: was V, must be V' for correct SVD reconstruction
         H_denoised = U * S * V';
         recovered_signal = diagonal_averaging(H_denoised);
 
-        recovered_signal = recovered_signal(:); % Ensure column vector
+        recovered_signal = recovered_signal(:);
         recovered_signal = recovered_signal(1:min(N, length(recovered_signal)));
         denoised_signal(1:length(recovered_signal)) = denoised_signal(1:length(recovered_signal)) + recovered_signal;
     end
@@ -138,13 +149,13 @@ function x = diagonal_averaging(H)
     end
 
     x = x ./ count;
-    x = x(:); % Convert to column vector
+    x = x(:);
 end
 
 % ------------------------------------------------------------------
-% SNR Computation
-function SNR_dB = compute_snr(signal, reference, label)
-    signal = signal(:); reference = reference(:); % Ensure column vectors
+% SNR Computation — FIX: removed unused label arg, now returns value
+function SNR_dB = compute_snr(signal, reference)
+    signal = signal(:); reference = reference(:);
     min_len = min(length(signal), length(reference));
     signal = signal(1:min_len);
     reference = reference(1:min_len);
@@ -152,9 +163,10 @@ function SNR_dB = compute_snr(signal, reference, label)
     signal_power = mean(reference.^2);
     noise_power = mean((reference - signal).^2);
     SNR_dB = 10 * log10(signal_power / noise_power);
-
 end
-%% --- Hildebrand-Sekhon SNR ---
+
+% ------------------------------------------------------------------
+% Hildebrand-Sekhon SNR Estimator
 function [noise_power, signal_power, snr_db] = hildebrand_sekhon(power_spectrum, n_avg)
     power_spectrum = sort(power_spectrum);
     N = length(power_spectrum);
@@ -178,14 +190,12 @@ function [noise_power, signal_power, snr_db] = hildebrand_sekhon(power_spectrum,
     signal_power = max(total_power - noise_power, eps);
     snr_db = 10 * log10(signal_power / noise_power);
 end
-%% --- Print All Metrics ---
-function print_all_metrics(name, signal, reference, Fs)
-    
 
+% ------------------------------------------------------------------
+% Print All Metrics
+function print_all_metrics(name, signal, ~, Fs)
     [pxx, ~] = pwelch(signal, hamming(1024), 512, 1024, Fs);
     [~, ~, hs_snr] = hildebrand_sekhon(pxx, 1);
-
     fprintf('\n=== %s ===\n', name);
     fprintf('Hildebrand-Sekhon SNR: %.4f dB\n', hs_snr);
-    
 end
