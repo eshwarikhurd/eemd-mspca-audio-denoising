@@ -52,7 +52,7 @@ verifyEqual(tc, snr_db(tc.TestData.noisy, tc.TestData.x), 15, 'AbsTol', 0.3);
 end
 
 function test_methods_keep_length(tc)
-for m = {'emd_svd', 'wavelet', 'emd_hurst'}
+for m = {'emd_svd', 'wavelet', 'emd_hurst', 'eemd_mspca'}
     y = denoise(tc.TestData.noisy, m{1});
     verifySize(tc, y, size(tc.TestData.noisy), m{1});
     verifyTrue(tc, all(isfinite(y)), m{1});
@@ -70,6 +70,36 @@ end
 function test_wavelet_improves_snr(tc)
 y = denoise_wavelet(tc.TestData.noisy);
 verifyGreaterThan(tc, snr_db(y, tc.TestData.x), snr_db(tc.TestData.noisy, tc.TestData.x));
+end
+
+function test_eemd_without_noise_is_emd(tc)
+% With no added noise every ensemble member is the same EMD, so the
+% components must add back up to the signal exactly.
+x = tc.TestData.noisy(1:4096);
+c = eemd(x, n_ensemble=2, noise_ratio=0);
+verifyEqual(tc, sum(c, 2), x, 'AbsTol', 1e-10);
+end
+
+function test_eemd_reconstruction(tc)
+% Averaged added noise shrinks with the ensemble size: ~ 0.2*std(x)/sqrt(M).
+x = tc.TestData.noisy(1:4096);
+c = eemd(x, n_ensemble=50, seed=1);
+verifyLessThan(tc, rms(sum(c, 2) - x), 2 * 0.2 * std(x) / sqrt(50));
+end
+
+function test_eemd_seed_is_reproducible(tc)
+x = tc.TestData.noisy(1:4096);
+verifyEqual(tc, eemd(x, n_ensemble=5, seed=3), eemd(x, n_ensemble=5, seed=3));
+end
+
+function test_eemd_mspca_blocks(tc)
+% Peng et al. (2021), Table 1: Blocks, N = 1024, noise 0.2*randn,
+% 6.99 -> 12.55 dB. Our defaults reach about 12 dB.
+x = wnoise(1, 10).';
+x = x / rms(x) * 0.2 * 10^(6.99 / 20);
+rng(1);
+xn = x + 0.2 * randn(1024, 1);
+verifyGreaterThan(tc, snr_db(denoise_eemd_mspca(xn, seed=1), x), snr_db(xn, x) + 4);
 end
 
 function test_unknown_method(tc)
