@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install GStreamer (MATLAB needs it to read MP3 on Linux)
+        run: sudo apt-get update && sudo apt-get install -y gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-libav
       - uses: matlab-actions/setup-matlab@v2
         with:
           products: Signal_Processing_Toolbox Wavelet_Toolbox
