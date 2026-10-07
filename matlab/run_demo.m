@@ -1,6 +1,6 @@
-%RUN_DEMO Interactive demo: denoise one audio clip with all three methods.
+%RUN_DEMO Interactive demo: denoise one audio clip with every method.
 %   Pick an audio file (defaults to audio/Flute_audio.mp3), add white noise
-%   at 15 dB, compare the methods by SNR and Hildebrand-Sekhon SNR, plot the
+%   at 15 dB, compare the four methods by SNR and Hildebrand-Sekhon SNR, plot the
 %   spectra and optionally play the results.
 
 repo = fileparts(fileparts(mfilename('fullpath')));
@@ -18,7 +18,7 @@ input_snr = 15;
 rng(0);
 noisy = add_white_noise(x, input_snr);
 
-methods = {'emd_svd', 'wavelet', 'emd_hurst'};
+methods = {'emd_svd', 'wavelet', 'emd_hurst', 'eemd_mspca'};
 signals = {x, noisy};
 names = {'clean', 'noisy'};
 for m = 1:numel(methods)
