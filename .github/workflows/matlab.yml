@@ -1,0 +1,53 @@
+# Runs the MATLAB unit tests and a small benchmark on every push.
+# MATLAB on GitHub Actions is free for public repositories (no license needed).
+name: MATLAB
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: matlab-actions/setup-matlab@v2
+        with:
+          products: Signal_Processing_Toolbox Wavelet_Toolbox
+      - uses: matlab-actions/run-tests@v2
+        with:
+          source-folder: matlab
+          select-by-folder: matlab/tests
+
+  benchmark:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pytest -q python/tests
+      - name: Prepare noisy files
+        run: |
+          python python/run_benchmark.py --stage prepare --dataset flute --snrs 5 15 --out results/flute
+          python python/run_benchmark.py --stage prepare --dataset noizeus --noises babble street \
+            --snrs 5 15 --limit 3 --out results/noizeus
+      - uses: matlab-actions/setup-matlab@v2
+        with:
+          products: Signal_Processing_Toolbox Wavelet_Toolbox
+      - name: Denoise with MATLAB
+        uses: matlab-actions/run-command@v2
+        with:
+          command: addpath('matlab'); denoise_batch('results/flute/work'); denoise_batch('results/noizeus/work')
+      - name: Score
+        run: |
+          python python/run_benchmark.py --stage score --dataset flute --out results/flute
+          python python/run_benchmark.py --stage score --dataset noizeus --out results/noizeus
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: results/*/*.csv
