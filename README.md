@@ -148,6 +148,20 @@ Results go to `results/<dataset>/`:
 0/5/10/15 dB, and is free for research. Please cite *Hu, Y. and Loizou, P. (2007). Subjective
 evaluation and comparison of speech enhancement algorithms. Speech Communication, 49, 588-601.*
 
+### Figures and listening page
+```bash
+python python/plot_results.py --dataset noizeus
+python python/plot_results.py --dataset flute --examples Flute_audio_white_0dB --decomposition
+```
+Writes to `results/<dataset>/figures/`:
+- `metric_vs_snr.png`: change in SNR, PESQ and STOI relative to the noisy input, per input SNR (the main results figure)
+- `distributions.png`: per-file spread of the PESQ and STOI change, with the share of files each method improved
+- `noise_heatmap_pesq.png`: mean PESQ change per noise type and method (datasets with several noise types)
+- `spectrogram_<case>.png`, `psd_<case>.png`: one example in detail, including each method's error against the clean clip
+- `decomposition_<case>.png` (with `--decomposition`, needs MATLAB): IMFs with their Hurst exponent, EMD-SVD singular values and EEMD variance contribution rates
+
+and `results/<dataset>/listen.html`, which plays every version of the example clips at the same gain next to their metrics.
+
 ### Tests
 ```bash
 pytest python/tests                                   # Python
