@@ -1,0 +1,21 @@
+# Local data, datasets and notes (not committed)
+data/
+
+# macOS
+.DS_Store
+
+# MATLAB
+*.asv
+*.mex*
+slprj/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Generated outputs
+results/
+*.wav
