@@ -13,7 +13,10 @@ MATLAB implementation of audio signal denoising techniques presented in:
 
 ## Overview
 
-This repository provides implementations of four audio denoising pipelines evaluated on a flute audio sample at **15 dB input SNR**. Performance is measured using the **Hildebrand-Sekhon SNR estimator** applied to the Welch power spectral density.
+This repository implements the EMD-SVD denoising pipeline from the paper, the EEMD-MSPCA method of Peng et al. (2021),
+two further methods and three baselines, and benchmarks them on the paper's flute clip and on the NOIZEUS speech corpus
+(8 real-world noises, 0-15 dB) with SNR, segmental SNR, PESQ and STOI. The paper's Hildebrand-Sekhon SNR is reported
+alongside for comparison. See [`knowledge.md`](knowledge.md) for how everything fits together, file by file.
 
 | Method | Key Technique | Highlight |
 |--------|--------------|-----------|
@@ -21,6 +24,7 @@ This repository provides implementations of four audio denoising pipelines evalu
 | **Wavelet** | `wden` soft-thresholding (`sym8`, level 3) | Fast, single-pass |
 | **EMD (Hurst-based)** | EMD → Hurst exponent IMF selection | Eliminates fractal noise IMFs |
 | **EEMD-MSPCA** | Ensemble EMD → per-IMF Hankel PCA → soft threshold | Method of Peng et al. (2021) |
+| Baselines | Low-pass, wavelet-MSPCA, EEMD-SVD | From Peng et al.'s comparison |
 
 ---
 
@@ -34,18 +38,21 @@ eemd-mspca-audio-denoising/
 │   ├── denoise_emd_hurst.m     # EMD + Hurst exponent IMF selection
 │   ├── denoise_eemd_mspca.m    # EEMD + multiscale PCA (Peng et al., 2021)
 │   ├── eemd.m                  # Ensemble EMD
+│   ├── denoise_lowpass.m, denoise_wavelet_mspca.m, denoise_eemd_svd.m   # Baselines
+│   ├── plot_decomposition.m, plot_eemd_mspca.m                          # Diagnostic figures
 │   ├── denoise.m               # Run a method by name
 │   ├── denoise_batch.m         # Batch entry point used by the Python benchmark
 │   ├── run_demo.m              # Interactive demo: plots, metrics, playback
 │   ├── hs_snr.m, snr_db.m, ... # Metrics and helpers
 │   └── tests/                  # MATLAB unit tests
 ├── python/                     # Dataset, noise, metrics and benchmark runner
-│   ├── run_benchmark.py
+│   ├── run_benchmark.py, run_sweep.py, plot_results.py
 │   ├── datasets.py, noise.py, metrics.py, matlab_bridge.py
 │   └── tests/
 ├── audio/Flute_audio.mp3       # Test audio: flute sample @ 44100 Hz
-├── .github/workflows/          # CI: MATLAB tests + small benchmark on every push
+├── .github/workflows/          # CI: MATLAB tests + small benchmark on PRs and pushes to main
 ├── requirements.txt
+├── knowledge.md                # How the project works, file by file, and current results
 └── README.md
 ```
 
@@ -185,16 +192,36 @@ matlab -batch "runtests('matlab/tests')"              # MATLAB
 
 ## Results
 
-Evaluated on a 1-second flute recording (44100 Hz, normalized). Noise added at **15 dB SNR**.
+**The paper's setting** (1-second flute clip, white noise at 15 dB input SNR), EMD-SVD with the paper's settings:
 
-| Signal | Hildebrand-Sekhon SNR |
-|--------|----------------------|
-| Original | baseline |
-| Noisy (15 dB AWGN) | degraded |
-| EMD + SVD denoised | **+12.53 dB improvement** |
-| Wavelet denoised | competitive baseline |
+| Metric | Noisy input | EMD-SVD output | Change |
+|---|---|---|---|
+| Hildebrand-Sekhon SNR (blind, used in the paper) | 13.97 dB | 30.69 dB | **+16.7 dB** |
+| SNR against the clean clip | 15.00 dB | 12.73 dB | −2.3 dB |
+| PESQ (perceived quality) | 3.23 | 1.63 | −1.60 |
 
-*See [`docs/results_summary.md`](docs/results_summary.md) for detailed metrics.*
+The paper's +12.53 dB is a gain in the blind Hildebrand-Sekhon estimate, which this code reproduces (+16.7 dB here; the
+noise realisation differs). Measured against the clean clip, the same output is worse than the input. The blind
+estimate also saturates: the clean flute itself scores 47.7 dB.
+
+**NOIZEUS speech** (30 sentences × 8 real-world noises; mean change against the noisy input, default settings):
+
+| Method | ΔSNR at 0 dB | ΔSNR at 15 dB | ΔPESQ at 0 dB | ΔPESQ at 15 dB |
+|---|---|---|---|---|
+| EMD-SVD | +1.44 | −9.08 | +0.09 | +0.18 |
+| EEMD-MSPCA | **+3.63** | −5.22 | −0.05 | −0.19 |
+| Wavelet | +1.59 | −7.45 | −0.11 | −0.68 |
+| EMD-Hurst | +0.28 | −9.36 | −0.26 | −0.54 |
+| Low-pass | +0.70 | −2.51 | +0.06 | +0.10 |
+| Wavelet-MSPCA | +1.33 | −5.94 | **+0.15** | **+0.29** |
+| EEMD-SVD | +0.02 | −0.24 | +0.01 | +0.03 |
+
+No method improves STOI (intelligibility) at any input SNR. With settings tuned on sentences 1-10 and tested on
+sentences 11-30, only the wavelet method gains SNR on average (+0.84 dB), and the best PESQ gain is wavelet-MSPCA at
+its defaults (+0.19). Full tables, the reproduction of Peng et al.'s Table 1, the sweep and what each result means are
+in [`knowledge.md`](knowledge.md#5-preliminary-results).
+
+Reproduce with `python python/run_benchmark.py --dataset flute|noizeus` and `python python/run_sweep.py`.
 
 ---
 
@@ -237,4 +264,4 @@ If you use this code in your research, please cite:
 
 ## License
 
-This repository is made available for academic and research purposes. See [LICENSE](LICENSE) for details.
+This repository is made available for academic and research purposes.

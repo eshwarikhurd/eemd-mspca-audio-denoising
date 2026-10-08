@@ -4,6 +4,7 @@ name: MATLAB
 
 on:
   push:
+    branches: [main]   # other branches are covered by their pull request run
   pull_request:
   workflow_dispatch:
 
