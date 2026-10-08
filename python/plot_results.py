@@ -34,6 +34,10 @@ METHOD_STYLE = {
     "eemd_mspca": dict(color="#eb6834", marker="D", label="EEMD-MSPCA"),
     "wavelet": dict(color="#1baf7a", marker="^", label="Wavelet"),
     "emd_hurst": dict(color="#eda100", marker="v", label="EMD-Hurst"),
+    # Baselines from Peng et al. (2021), drawn dashed.
+    "lowpass": dict(color="#e87ba4", marker="P", label="Low-pass", baseline=True),
+    "wavelet_mspca": dict(color="#008300", marker="X", label="Wavelet-MSPCA", baseline=True),
+    "eemd_svd": dict(color="#4a3aa7", marker="h", label="EEMD-SVD", baseline=True),
 }
 INK, INK_2, MUTED = "#0b0b0b", "#52514e", "#898781"
 GRID, AXIS, SURFACE = "#e1e0d9", "#c3c2b7", "#fcfcfb"
@@ -99,11 +103,15 @@ def with_deltas(results):
     return out
 
 
+def line_style(m):
+    return "--" if METHOD_STYLE[m].get("baseline") else "-"
+
+
 def legend_row(fig, methods):
     handles = [plt.Line2D([], [], color=METHOD_STYLE[m]["color"], marker=METHOD_STYLE[m]["marker"],
-                          markersize=7, markeredgecolor=SURFACE, markeredgewidth=1.5,
-                          label=METHOD_STYLE[m]["label"]) for m in methods]
-    fig.legend(handles=handles, loc="upper center", ncol=len(handles), bbox_to_anchor=(0.5, 1.0),
+                          linestyle=line_style(m), markersize=7, markeredgecolor=SURFACE,
+                          markeredgewidth=1.5, label=METHOD_STYLE[m]["label"]) for m in methods]
+    fig.legend(handles=handles, loc="upper center", ncol=min(len(handles), 4), bbox_to_anchor=(0.5, 1.0),
                handlelength=2.2, columnspacing=1.6, labelcolor=INK_2)
 
 
@@ -123,8 +131,9 @@ def plot_metric_vs_snr(d, methods, path, title):
             st = METHOD_STYLE[m]
             if (n > 1).all():
                 ax.fill_between(snrs, mean - half, mean + half, color=st["color"], alpha=0.1, linewidth=0)
-            ax.plot(snrs, mean, color=st["color"], marker=st["marker"], markersize=7,
-                    markeredgecolor=SURFACE, markeredgewidth=1.5, zorder=3)
+            ax.plot(snrs, mean, color=st["color"], marker=st["marker"], markersize=7, linestyle=line_style(m),
+                    linewidth=1.5 if st.get("baseline") else 2, markeredgecolor=SURFACE,
+                    markeredgewidth=1.5, zorder=3)
         ax.set_title(label, loc="left")
         ax.set_xlabel("Input SNR (dB)")
         ax.set_xticks(snrs)
@@ -250,7 +259,7 @@ def plot_psd(signals, fs, path, title):
         else:
             st = METHOD_STYLE[n]
             ax.plot(f[1:], 10 * np.log10(p[1:]), color=st["color"], linewidth=1.5 if n != "noisy" else 1.2,
-                    label=st["label"], zorder=2 if n == "noisy" else 3)
+                    linestyle=line_style(n), label=st["label"], zorder=2 if n == "noisy" else 3)
     ax.set_xscale("log")
     ax.set_xlim(50, fs / 2)
     ax.set_xlabel("Frequency (Hz)")
