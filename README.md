@@ -96,6 +96,17 @@ arguments, e.g. `denoise_eemd_mspca(x, L=16, sigma='std', readout='first_row_las
 
 ---
 
+### Baselines (from Peng et al.'s comparison)
+- **Low-pass** (`denoise_lowpass.m`): 4th-order Butterworth, cutoff `wn` = 0.5 × Nyquist by default, run forwards and backwards so the waveform is not shifted.
+- **Wavelet-MSPCA** (`denoise_wavelet_mspca.m`, Bakshi 1998): the signal's 10 lagged copies (a Hankel matrix) are denoised together with MATLAB's `wmspca` (`sym4`, level 5, Kaiser rule), then averaged back into one signal.
+- **EEMD-SVD** (`denoise_eemd_svd.m`): EEMD, drop leading components with VCR < 0.01, then the EMD-SVD singular-value rule (`< 0.6 × median` set to zero) on each component.
+
+On Peng's synthetic tests wavelet-MSPCA lands close to the paper (Blocks 14.6 dB vs 11.8, Bumps 16.0 vs 19.9,
+Heavy sine 20.9 vs 19.0, Doppler 14.9 vs 16.6). The zero-phase low-pass scores far higher than the paper's filter, which
+shifted the waveform. EEMD-SVD barely changes these signals (the paper's EEMD-Hankel-SVD rule is not specified).
+
+---
+
 ## Requirements
 
 Everything used here is free for academic use.
@@ -113,7 +124,8 @@ addpath('matlab')
 [x, fs] = audioread('audio/Flute_audio.mp3');
 y = denoise_emd_svd(x(1:fs, 1));             % paper defaults
 y = denoise_emd_svd(x(1:fs, 1), L=30, n_iter=3);
-y = denoise(x(1:fs, 1), 'wavelet');          % or 'emd_svd', 'emd_hurst', 'eemd_mspca'
+y = denoise(x(1:fs, 1), 'wavelet');          % or 'emd_svd', 'emd_hurst', 'eemd_mspca',
+                                             % 'lowpass', 'wavelet_mspca', 'eemd_svd'
 ```
 
 ### Interactive demo (MATLAB)

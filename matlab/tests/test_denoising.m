@@ -52,7 +52,7 @@ verifyEqual(tc, snr_db(tc.TestData.noisy, tc.TestData.x), 15, 'AbsTol', 0.3);
 end
 
 function test_methods_keep_length(tc)
-for m = {'emd_svd', 'wavelet', 'emd_hurst', 'eemd_mspca'}
+for m = {'emd_svd', 'wavelet', 'emd_hurst', 'eemd_mspca', 'lowpass', 'wavelet_mspca', 'eemd_svd'}
     y = denoise(tc.TestData.noisy, m{1});
     verifySize(tc, y, size(tc.TestData.noisy), m{1});
     verifyTrue(tc, all(isfinite(y)), m{1});
@@ -100,6 +100,24 @@ x = x / rms(x) * 0.2 * 10^(6.99 / 20);
 rng(1);
 xn = x + 0.2 * randn(1024, 1);
 verifyGreaterThan(tc, snr_db(denoise_eemd_mspca(xn, seed=1), x), snr_db(xn, x) + 4);
+end
+
+function test_lowpass_removes_high_frequencies(tc)
+fs = 8000;
+t = (0:fs - 1).' / fs;
+x = sin(2 * pi * 200 * t) + sin(2 * pi * 3500 * t);
+y = denoise_lowpass(x, wn=0.25);   % cutoff 1 kHz
+mid = 100:numel(t) - 100;          % skip the filter's edge transients
+verifyEqual(tc, y(mid), sin(2 * pi * 200 * t(mid)), 'AbsTol', 0.05);
+end
+
+function test_wavelet_mspca_blocks(tc)
+% Peng et al. (2021), Table 1, wavelet-MSPCA column: Blocks 6.99 -> 11.83 dB.
+x = wnoise(1, 10).';
+x = x / rms(x) * 0.2 * 10^(6.99 / 20);
+rng(1);
+xn = x + 0.2 * randn(1024, 1);
+verifyGreaterThan(tc, snr_db(denoise_wavelet_mspca(xn), x), snr_db(xn, x) + 4);
 end
 
 function test_unknown_method(tc)
