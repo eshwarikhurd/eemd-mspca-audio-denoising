@@ -159,6 +159,7 @@ Writes to `results/<dataset>/figures/`:
 - `noise_heatmap_pesq.png`: mean PESQ change per noise type and method (datasets with several noise types)
 - `spectrogram_<case>.png`, `psd_<case>.png`: one example in detail, including each method's error against the clean clip
 - `decomposition_<case>.png` (with `--decomposition`, needs MATLAB): IMFs with their Hurst exponent, EMD-SVD singular values and EEMD variance contribution rates
+- `eemd_mspca_<case>.png` (with `--decomposition`): EEMD-MSPCA step by step, in the style of Peng et al.'s Figs. 3–4: each component before and after, eigenvalue share against the 85% cut-off, energy kept after PCA and after the soft threshold, and a 40 ms window against the clean clip
 
 and `results/<dataset>/listen.html`, which plays every version of the example clips at the same gain next to their metrics.
 

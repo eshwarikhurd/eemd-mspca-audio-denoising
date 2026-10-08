@@ -79,7 +79,8 @@ def parse_args():
     p.add_argument("--out", type=Path, help="benchmark output folder (default: results/<dataset>)")
     p.add_argument("--examples", nargs="+", help="case ids for spectrograms and the listening page "
                    "(default: first clip and noise at the lowest and highest input SNR)")
-    p.add_argument("--decomposition", action="store_true", help="also draw IMF figures with MATLAB")
+    p.add_argument("--decomposition", action="store_true",
+                   help="also draw the IMF and EEMD-MSPCA step-by-step figures with MATLAB")
     p.add_argument("--matlab", help="path to the matlab executable")
     return p.parse_args()
 
@@ -357,9 +358,12 @@ def main():
         plot_spectrograms(signals, fs, figs / f"spectrogram_{case_id}.png", f"{case_id}")
         plot_psd(signals, fs, figs / f"psd_{case_id}.png", f"{case_id}: power spectral density")
         if args.decomposition:
+            noisy = (out / "work" / "noisy" / f"{case_id}.wav").resolve()
+            clean = (out / "work" / "clean" / f"{row['clip']}.wav").resolve()
             matlab_bridge.run_command(
-                f"plot_decomposition('{(out / 'work' / 'noisy' / f'{case_id}.wav').resolve()}', "
-                f"'{(figs / f'decomposition_{case_id}.png').resolve()}')", args.matlab)
+                f"plot_decomposition('{noisy}', '{(figs / f'decomposition_{case_id}.png').resolve()}'); "
+                f"plot_eemd_mspca('{noisy}', '{(figs / f'eemd_mspca_{case_id}.png').resolve()}', '{clean}')",
+                args.matlab)
     write_listening_page(out, examples, results, methods)
     print(f"Wrote figures to {figs} and {out / 'listen.html'}")
 
