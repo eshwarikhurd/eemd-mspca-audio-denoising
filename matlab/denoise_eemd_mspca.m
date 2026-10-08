@@ -27,6 +27,7 @@ arguments
     opts.energy (1,1) double {mustBeInRange(opts.energy, 0, 1)} = 0.85
     opts.sigma (1,:) char {mustBeMember(opts.sigma, {'std', 'var', 'mad', 'removed', 'none'})} = 'removed'
     opts.readout (1,:) char {mustBeMember(opts.readout, {'first_row_last_col', 'diagonal'})} = 'diagonal'
+    opts.t_scale (1,1) double {mustBeNonnegative} = 1   % multiplies the soft threshold (0 = no threshold)
 end
 
 N = numel(x);
@@ -60,7 +61,7 @@ for i = first:n
         case 'none'
             s = 0;
     end
-    info.T(i) = s * sqrt(2 * log(N));
+    info.T(i) = opts.t_scale * s * sqrt(2 * log(N));
     info.after_pca(:, i) = ci;
     info.denoised(:, i) = soft_threshold(ci, info.T(i));
     y = y + info.denoised(:, i);
