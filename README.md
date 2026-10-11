@@ -26,16 +26,23 @@ This repository provides implementations of three audio denoising pipelines eval
 ## Repository Structure
 
 ```
-audio-denoising/
-├── src/
-│   ├── emd_svd_denoising.m      # Main pipeline: EMD + Hankel-SVD (iterative)
-│   ├── wavelet_denoising.m      # Wavelet denoising using wden (sym8)
-│   └── emd_denoising.m          # EMD + Hurst exponent IMF selection
-├── audio/
-│   └── Flute_audio.mp3          # Test audio: 1-second flute sample @ 44100 Hz
-├── docs/
-│   └── results_summary.md       # SNR results and method comparison
-├── .gitignore
+eemd-mspca-audio-denoising/
+├── matlab/                     # Denoising methods (pure functions: signal in, signal out)
+│   ├── denoise_emd_svd.m       # EMD + Hankel-SVD (iterative) — main method of the paper
+│   ├── denoise_wavelet.m       # Wavelet denoising using wden (sym8)
+│   ├── denoise_emd_hurst.m     # EMD + Hurst exponent IMF selection
+│   ├── denoise.m               # Run a method by name
+│   ├── denoise_batch.m         # Batch entry point used by the Python benchmark
+│   ├── run_demo.m              # Interactive demo: plots, metrics, playback
+│   ├── hs_snr.m, snr_db.m, ... # Metrics and helpers
+│   └── tests/                  # MATLAB unit tests
+├── python/                     # Dataset, noise, metrics and benchmark runner
+│   ├── run_benchmark.py
+│   ├── datasets.py, noise.py, metrics.py, matlab_bridge.py
+│   └── tests/
+├── audio/Flute_audio.mp3       # Test audio: flute sample @ 44100 Hz
+├── .github/workflows/          # CI: MATLAB tests + small benchmark on every push
+├── requirements.txt
 └── README.md
 ```
 
@@ -43,7 +50,7 @@ audio-denoising/
 
 ## Methods
 
-### 1. EMD + Hankel-SVD (`emd_svd_denoising.m`)
+### 1. EMD + Hankel-SVD (`denoise_emd_svd.m`)
 The primary method from the paper. Applies iterative denoising over 5 passes:
 1. Decompose the signal into Intrinsic Mode Functions (IMFs) via EMD with PCHIP interpolation.
 2. Retain the first 6 IMFs (least noisy).
@@ -54,52 +61,76 @@ The primary method from the paper. Applies iterative denoising over 5 passes:
 
 **Metrics reported:** Hildebrand-Sekhon SNR (via Welch PSD).
 
-### 2. Wavelet Denoising (`wavelet_denoising.m`)
+### 2. Wavelet Denoising (`denoise_wavelet.m`)
 Single-pass denoising using MATLAB's `wden`:
 - Wavelet: `sym8`
 - Thresholding rule: `sqtwolog` (universal threshold), soft
 - Decomposition level: 3
 - Noise estimation: `mln` (level-dependent)
 
-### 3. EMD + Hurst Exponent (`emd_denoising.m`)
+### 3. EMD + Hurst Exponent (`denoise_emd_hurst.m`)
 - Decomposes signal into IMFs.
-- Estimates the Hurst exponent `H` for each IMF.
+- Estimates the Hurst exponent `H` for each IMF (rescaled-range analysis, `estimate_hurst.m`).
 - Subtracts IMFs with `H < 0.5` (anti-persistent, noise-dominated components).
 
 ---
 
 ## Requirements
 
-- **MATLAB R2019b or later**
-- Signal Processing Toolbox (for `pwelch`, `wden`, `hamming`)
-- Wavelet Toolbox (for `wden`)
-- **Signal Processing Toolbox** built-in `emd` function (R2018a+)
+Everything used here is free for academic use.
+
+- **MATLAB R2021a or later** with the **Signal Processing Toolbox** (`emd`, `pwelch`) and **Wavelet Toolbox** (`wden`)
+- **Python 3.10+** for the benchmark: `pip install -r requirements.txt`
 
 ---
 
 ## Usage
 
-### EMD + SVD Pipeline (main method)
+### Use a method directly (MATLAB)
 ```matlab
-% Run from MATLAB — a file picker dialog will appear
-run('src/emd_svd_denoising.m')
-```
-Select `audio/Flute_audio.mp3` when prompted. The script will:
-- Add AWGN at 15 dB SNR
-- Run 5 iterations of EMD-SVD denoising
-- Plot frequency spectra (original / noisy / denoised)
-- Play back all three audio versions
-- Print Hildebrand-Sekhon SNR for each
-
-### Wavelet Pipeline
-```matlab
-run('src/wavelet_denoising.m')
+addpath('matlab')
+[x, fs] = audioread('audio/Flute_audio.mp3');
+y = denoise_emd_svd(x(1:fs, 1));             % paper defaults
+y = denoise_emd_svd(x(1:fs, 1), L=30, n_iter=3);
+y = denoise(x(1:fs, 1), 'wavelet');          % or 'emd_svd', 'emd_hurst'
 ```
 
-### EMD + Hurst Exponent
+### Interactive demo (MATLAB)
 ```matlab
-[y, Fs] = audioread('audio/Flute_audio.mp3');
-emd_denoising(y(1:44100));
+run('matlab/run_demo.m')
+```
+Adds white noise at 15 dB to the chosen clip (default: the flute), runs all three methods,
+prints SNR and Hildebrand-Sekhon SNR, plots the spectra and can play the results.
+
+### Benchmark (Python + MATLAB)
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Flute clip with white noise at 0/5/10/15 dB
+python python/run_benchmark.py --dataset flute
+
+# NOIZEUS speech corpus (downloaded automatically to data/noizeus)
+python python/run_benchmark.py --dataset noizeus
+python python/run_benchmark.py --dataset noizeus --noises babble car --snrs 5 15 --limit 5
+
+# Any audio file or folder, with white noise or your own noise recording
+python python/run_benchmark.py --dataset path/to/clips --noises white path/to/noise.wav
+```
+The runner finds MATLAB on `PATH` or in `/Applications` (override with `--matlab` or `MATLAB_BIN`).
+Results go to `results/<dataset>/`:
+- `results.csv`: one row per clip × noise × input SNR × method, with SNR, segmental SNR, PESQ, STOI,
+  Hildebrand-Sekhon SNR and runtime. The `noisy` method is the unprocessed input (baseline).
+- `summary.csv`: means per method, noise and input SNR.
+
+**NOIZEUS** (Hu & Loizou, 2007) has 30 IEEE sentences at 8 kHz with 8 real-world noises at
+0/5/10/15 dB, and is free for research. Please cite *Hu, Y. and Loizou, P. (2007). Subjective
+evaluation and comparison of speech enhancement algorithms. Speech Communication, 49, 588-601.*
+
+### Tests
+```bash
+pytest python/tests                                   # Python
+matlab -batch "runtests('matlab/tests')"              # MATLAB
 ```
 
 ---
