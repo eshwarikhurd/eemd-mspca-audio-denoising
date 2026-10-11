@@ -111,15 +111,16 @@ def legend_row(fig, methods):
     handles = [plt.Line2D([], [], color=METHOD_STYLE[m]["color"], marker=METHOD_STYLE[m]["marker"],
                           linestyle=line_style(m), markersize=7, markeredgecolor=SURFACE,
                           markeredgewidth=1.5, label=METHOD_STYLE[m]["label"]) for m in methods]
-    fig.legend(handles=handles, loc="upper center", ncol=min(len(handles), 4), bbox_to_anchor=(0.5, 1.0),
+    fig.legend(handles=handles, loc="upper center", ncol=min(len(handles), 4), bbox_to_anchor=(0.5, 0.97),
                handlelength=2.2, columnspacing=1.6, labelcolor=INK_2)
 
 
 def plot_metric_vs_snr(d, methods, path, title):
     """Main results figure: change in each metric vs input SNR, one line per method."""
     snrs = sorted(d.snr_in.unique())
-    fig, axes = plt.subplots(1, len(METRICS), figsize=(12, 4.2), constrained_layout=True)
-    fig.get_layout_engine().set(rect=(0, 0, 1, 0.9))
+    legend_rows = -(-sum(m != "noisy" for m in methods) // 4)
+    fig, axes = plt.subplots(1, len(METRICS), figsize=(12, 4.2 + 0.3 * legend_rows), constrained_layout=True)
+    fig.get_layout_engine().set(rect=(0, 0, 1, 0.93 - 0.06 * legend_rows))
     for ax, (metric, label) in zip(axes, METRICS.items()):
         ax.axhline(0, color=AXIS, linewidth=1, zorder=1)
         for m in methods:
@@ -138,7 +139,7 @@ def plot_metric_vs_snr(d, methods, path, title):
         ax.set_xlabel("Input SNR (dB)")
         ax.set_xticks(snrs)
         ax.grid(axis="x", visible=False)
-    fig.suptitle(title, x=0.01, y=1.06, ha="left", fontsize=13, fontweight="bold", color=INK)
+    fig.suptitle(title, x=0.01, y=1.02, ha="left", fontsize=13, fontweight="bold", color=INK)
     legend_row(fig, [m for m in methods if m != "noisy"])
     fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
@@ -345,7 +346,7 @@ def main():
     methods = methods_in(results)
     d = with_deltas(results)
     n_files = d[["clip", "noise", "snr_in"]].drop_duplicates().shape[0]
-    name = args.dataset
+    name = {"noizeus": "NOIZEUS", "flute": "Flute"}.get(args.dataset, args.dataset)
 
     per_snr = n_files // d.snr_in.nunique()
     spread = ", mean ± 95% CI" if per_snr > 1 else ""
