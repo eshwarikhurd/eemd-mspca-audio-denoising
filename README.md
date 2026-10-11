@@ -1,13 +1,21 @@
-# Audio Signal Denoising — EMD-SVD & Wavelet Methods
+# Audio Denoising Benchmark: EMD, EEMD-MSPCA & Wavelet Methods
 
 [![Paper](https://img.shields.io/badge/Paper-SpringerLink-blue)](https://link.springer.com/chapter/10.1007/978-981-96-7499-2_27)
 [![Conference](https://img.shields.io/badge/Conference-SmartCom%202025-orange)](https://link.springer.com/conference/smartcom)
 [![MATLAB](https://img.shields.io/badge/Language-MATLAB-red)](https://www.mathworks.com/)
+[![Python](https://img.shields.io/badge/Benchmark-Python-blue)](requirements.txt)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-MATLAB implementation of audio signal denoising techniques presented in:
+MATLAB methods and a Python benchmark that build on:
 
 > **Khurd, E., Kamthankar, S., Kelkar, A., & Yerram, R. B.** (2026). *Denoising Techniques of Audio Signals — A Review.* In: *Smart Trends in Computing and Communications* (SmartCom 2025). Lecture Notes in Networks and Systems, vol 1458. Springer, Singapore.  
 > DOI: [10.1007/978-981-96-7499-2_27](https://doi.org/10.1007/978-981-96-7499-2_27)
+
+## Key findings
+
+- **The paper's +12.53 dB for EMD-SVD is a blind-estimate gain.** Measured against the clean signal, the same output loses 2.3 dB of SNR and 1.6 PESQ points.
+- **On real noisy speech (NOIZEUS, 960 files), EEMD-MSPCA gives the largest SNR gain at 0 dB (+3.6 dB) and wavelet-MSPCA the best perceived quality (PESQ +0.15 to +0.29),** but at default settings every method lowers SNR at 10–15 dB input.
+- **No method improves intelligibility (STOI) on average,** even after tuning 70 settings and testing them on held-out sentences.
 
 ---
 
@@ -277,4 +285,4 @@ If you use this code in your research, please cite:
 
 ## License
 
-This repository is made available for academic and research purposes.
+Released under the [MIT License](LICENSE). If you use this code in research, please cite the paper (see [Citation](#citation)).
