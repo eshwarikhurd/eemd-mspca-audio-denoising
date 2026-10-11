@@ -1,0 +1,10 @@
+certifi
+numpy
+scipy
+pandas
+soundfile
+pesq
+pystoi
+tqdm
+pytest
+matplotlib
