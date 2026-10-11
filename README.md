@@ -13,13 +13,14 @@ MATLAB implementation of audio signal denoising techniques presented in:
 
 ## Overview
 
-This repository provides implementations of three audio denoising pipelines evaluated on a flute audio sample at **15 dB input SNR**. Performance is measured using the **Hildebrand-Sekhon SNR estimator** applied to the Welch power spectral density.
+This repository provides implementations of four audio denoising pipelines evaluated on a flute audio sample at **15 dB input SNR**. Performance is measured using the **Hildebrand-Sekhon SNR estimator** applied to the Welch power spectral density.
 
 | Method | Key Technique | Highlight |
 |--------|--------------|-----------|
 | **EMD + SVD** | Empirical Mode Decomposition → Hankel-SVD | Iterative, adaptive thresholding |
 | **Wavelet** | `wden` soft-thresholding (`sym8`, level 3) | Fast, single-pass |
 | **EMD (Hurst-based)** | EMD → Hurst exponent IMF selection | Eliminates fractal noise IMFs |
+| **EEMD-MSPCA** | Ensemble EMD → per-IMF Hankel PCA → soft threshold | Method of Peng et al. (2021) |
 
 ---
 
@@ -31,6 +32,8 @@ eemd-mspca-audio-denoising/
 │   ├── denoise_emd_svd.m       # EMD + Hankel-SVD (iterative) — main method of the paper
 │   ├── denoise_wavelet.m       # Wavelet denoising using wden (sym8)
 │   ├── denoise_emd_hurst.m     # EMD + Hurst exponent IMF selection
+│   ├── denoise_eemd_mspca.m    # EEMD + multiscale PCA (Peng et al., 2021)
+│   ├── eemd.m                  # Ensemble EMD
 │   ├── denoise.m               # Run a method by name
 │   ├── denoise_batch.m         # Batch entry point used by the Python benchmark
 │   ├── run_demo.m              # Interactive demo: plots, metrics, playback
@@ -73,6 +76,24 @@ Single-pass denoising using MATLAB's `wden`:
 - Estimates the Hurst exponent `H` for each IMF (rescaled-range analysis, `estimate_hurst.m`).
 - Subtracts IMFs with `H < 0.5` (anti-persistent, noise-dominated components).
 
+### 4. EEMD-MSPCA (`denoise_eemd_mspca.m`)
+Follows Peng, Guo & Shang (2021):
+1. Decompose the signal with ensemble EMD (`eemd.m`: 100 trials, added noise std = 0.2 × signal std) into IMFs and a residual.
+2. Drop the leading high-frequency IMFs whose variance contribution rate (VCR) is below 0.01.
+3. For each remaining component, run PCA on its Hankel matrix and keep the principal components up to 85% of the cumulative eigenvalue sum.
+4. Soft-threshold each component with `T = σ·sqrt(2·ln N)`.
+5. Sum the denoised components.
+
+The paper does not give every setting. These were chosen by reproducing its synthetic tests
+(Table 1: `wnoise` Blocks, Bumps, Heavy sine and Doppler, N = 1024, noise `0.2·randn`):
+- Hankel matrix with `L = 10` rows.
+- Components are rebuilt by diagonal averaging. The paper reads out the first row and last column, which scored lower in every test.
+- `σ` is the noise level of what the PCA step removed (`median(|r|)/0.6745`). Taking `σ` as the component's own std or variance, as the paper's wording suggests, sets almost every sample to zero.
+
+With these settings the reproduction is partial: Blocks 7.01 → 12.01 dB (paper: 12.55), Bumps 12.57 → 16.89
+(20.13), Heavy sine 9.53 → 16.13 (19.28), Doppler 9.34 → 14.24 (16.84). All options are exposed as name-value
+arguments, e.g. `denoise_eemd_mspca(x, L=16, sigma='std', readout='first_row_last_col')`.
+
 ---
 
 ## Requirements
@@ -92,14 +113,14 @@ addpath('matlab')
 [x, fs] = audioread('audio/Flute_audio.mp3');
 y = denoise_emd_svd(x(1:fs, 1));             % paper defaults
 y = denoise_emd_svd(x(1:fs, 1), L=30, n_iter=3);
-y = denoise(x(1:fs, 1), 'wavelet');          % or 'emd_svd', 'emd_hurst'
+y = denoise(x(1:fs, 1), 'wavelet');          % or 'emd_svd', 'emd_hurst', 'eemd_mspca'
 ```
 
 ### Interactive demo (MATLAB)
 ```matlab
 run('matlab/run_demo.m')
 ```
-Adds white noise at 15 dB to the chosen clip (default: the flute), runs all three methods,
+Adds white noise at 15 dB to the chosen clip (default: the flute), runs the methods,
 prints SNR and Hildebrand-Sekhon SNR, plots the spectra and can play the results.
 
 ### Benchmark (Python + MATLAB)
@@ -167,6 +188,14 @@ If you use this code in your research, please cite:
   doi       = {10.1007/978-981-96-7499-2_27}
 }
 ```
+
+---
+
+## References
+
+- Peng, K., Guo, H., Shang, X. (2021). EEMD and multiscale PCA-based signal denoising method and its application to seismic P-phase arrival picking. *Sensors*, 21(16), 5271. https://doi.org/10.3390/s21165271
+- Wu, Z., Huang, N. E. (2009). Ensemble empirical mode decomposition: a noise-assisted data analysis method. *Advances in Adaptive Data Analysis*, 1(1), 1–41.
+- Hu, Y., Loizou, P. (2007). Subjective evaluation and comparison of speech enhancement algorithms. *Speech Communication*, 49, 588–601. (NOIZEUS)
 
 ---
 

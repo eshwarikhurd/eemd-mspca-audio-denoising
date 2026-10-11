@@ -28,7 +28,7 @@ import metrics
 from noise import add_noise
 
 REPO = Path(__file__).resolve().parent.parent
-MATLAB_METHODS = ("emd_svd", "wavelet", "emd_hurst")
+MATLAB_METHODS = ("emd_svd", "wavelet", "emd_hurst", "eemd_mspca")
 METHODS = ("noisy",) + MATLAB_METHODS  # "noisy" = no denoising (baseline)
 
 
