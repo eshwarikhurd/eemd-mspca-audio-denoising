@@ -215,12 +215,26 @@ estimate also saturates: the clean flute itself scores 47.7 dB.
 | Wavelet-MSPCA | +1.33 | −5.94 | **+0.15** | **+0.29** |
 | EEMD-SVD | +0.02 | −0.24 | +0.01 | +0.03 |
 
+![Change in SNR, PESQ and STOI against the noisy input for each method, per input SNR, on NOIZEUS](docs/figures/noizeus_metric_vs_snr.png)
+
+![Mean PESQ change per noise type and method on NOIZEUS](docs/figures/noizeus_pesq_by_noise.png)
+
 No method improves STOI (intelligibility) at any input SNR. With settings tuned on sentences 1-10 and tested on
 sentences 11-30, only the wavelet method gains SNR on average (+0.84 dB), and the best PESQ gain is wavelet-MSPCA at
-its defaults (+0.19). Full tables, the reproduction of Peng et al.'s Table 1 and the sweep are in the pull requests that
+its defaults (+0.19).
+
+![Default vs tuned settings for each method on held-out NOIZEUS sentences 11-30](docs/figures/sweep_default_vs_tuned.png)
+
+**What EEMD-MSPCA does internally** (flute, 15 dB). Almost all of its effect comes from the soft threshold, which
+removes noise but also shrinks the flute's main tones, so the output's peaks are about 20% too low:
+
+![EEMD-MSPCA step by step on the flute clip: components before and after, eigenvalue share, energy per step, and a 40 ms window against the clean clip](docs/figures/eemd_mspca_flute_15dB.png)
+
+Full tables, the reproduction of Peng et al.'s Table 1 and the sweep are in the pull requests that
 added them ([#7](https://github.com/eshwarikhurd/eemd-mspca-audio-denoising/pull/7), [#10](https://github.com/eshwarikhurd/eemd-mspca-audio-denoising/pull/10), [#11](https://github.com/eshwarikhurd/eemd-mspca-audio-denoising/pull/11)).
 
-Reproduce with `python python/run_benchmark.py --dataset flute|noizeus` and `python python/run_sweep.py`.
+Reproduce with `python python/run_benchmark.py --dataset flute|noizeus`, `python python/run_sweep.py` and
+`python python/plot_results.py --dataset noizeus` (the figures above are copies from `results/` kept in `docs/figures/`).
 
 ---
 
