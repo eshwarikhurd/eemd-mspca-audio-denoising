@@ -16,7 +16,7 @@ MATLAB implementation of audio signal denoising techniques presented in:
 This repository implements the EMD-SVD denoising pipeline from the paper, the EEMD-MSPCA method of Peng et al. (2021),
 two further methods and three baselines, and benchmarks them on the paper's flute clip and on the NOIZEUS speech corpus
 (8 real-world noises, 0-15 dB) with SNR, segmental SNR, PESQ and STOI. The paper's Hildebrand-Sekhon SNR is reported
-alongside for comparison. See [`knowledge.md`](knowledge.md) for how everything fits together, file by file.
+alongside for comparison.
 
 | Method | Key Technique | Highlight |
 |--------|--------------|-----------|
@@ -52,7 +52,6 @@ eemd-mspca-audio-denoising/
 ├── audio/Flute_audio.mp3       # Test audio: flute sample @ 44100 Hz
 ├── .github/workflows/          # CI: MATLAB tests + small benchmark on PRs and pushes to main
 ├── requirements.txt
-├── knowledge.md                # How the project works, file by file, and current results
 └── README.md
 ```
 
@@ -218,8 +217,8 @@ estimate also saturates: the clean flute itself scores 47.7 dB.
 
 No method improves STOI (intelligibility) at any input SNR. With settings tuned on sentences 1-10 and tested on
 sentences 11-30, only the wavelet method gains SNR on average (+0.84 dB), and the best PESQ gain is wavelet-MSPCA at
-its defaults (+0.19). Full tables, the reproduction of Peng et al.'s Table 1, the sweep and what each result means are
-in [`knowledge.md`](knowledge.md#5-preliminary-results).
+its defaults (+0.19). Full tables, the reproduction of Peng et al.'s Table 1 and the sweep are in the pull requests that
+added them ([#7](https://github.com/eshwarikhurd/eemd-mspca-audio-denoising/pull/7), [#10](https://github.com/eshwarikhurd/eemd-mspca-audio-denoising/pull/10), [#11](https://github.com/eshwarikhurd/eemd-mspca-audio-denoising/pull/11)).
 
 Reproduce with `python python/run_benchmark.py --dataset flute|noizeus` and `python python/run_sweep.py`.
 
