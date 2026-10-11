@@ -20,7 +20,11 @@ def find_matlab(explicit=None):
     raise FileNotFoundError("MATLAB not found. Pass --matlab or set MATLAB_BIN.")
 
 
+def run_command(command, matlab=None):
+    """Run a MATLAB command with matlab/ on the path."""
+    subprocess.run([find_matlab(matlab), "-batch", f"addpath('{MATLAB_DIR}'); {command}"], check=True)
+
+
 def run_batch(work_dir, matlab=None):
     """Process every jobs_<method>.txt in work_dir with matlab/denoise_batch.m."""
-    cmd = f"addpath('{MATLAB_DIR}'); denoise_batch('{Path(work_dir).resolve()}')"
-    subprocess.run([find_matlab(matlab), "-batch", cmd], check=True)
+    run_command(f"denoise_batch('{Path(work_dir).resolve()}')", matlab)
